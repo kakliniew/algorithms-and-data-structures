@@ -8,16 +8,19 @@
 using namespace std;
 
 
-class Graph{
-    bool spojny = false;
+class Graph{            // klasa, do przechowywania informacji o grafie, krawedzie w wektorze wektorow(wewnetrzny wektor zawiera dwie liczby int)
+    bool spojny = true;
     bool drzewo = false;
     bool cykle = false;
+    bool dwudzielny = true;
     int liczba_w;
     int liczba_k;
+    int spojny_counter = 1;
     vector<vector<int>> krawedzie;
     set<int> odwiedzone;
     set<int> czerwone;
     set<int> zielone;
+    set<int> usedKrawedzie;
 
     public:
     void setliczba_w(int liczba_w){
@@ -44,74 +47,134 @@ class Graph{
         return this->liczba_w;
     }
 
-    void newcheckGraph(){
-        for(auto krawedz : krawedzie){
-            odwiedzone.insert(krawedz[0]);
-            odwiedzone.insert(krawedz[1]);
-
-            cout<<"krawedz " << krawedz[0] << " dalej " << krawedz[1] << " odwiedzone " << odwiedzone.size() << endl;
-        }
-
-    }
 
     void checkGraph(){
-        int current_W = krawedzie[1][0];
+        int current_W = krawedzie[0][0];  //od pierwszego wierzcholka
         int previosW;
-        stack<int> dfsStack;
+        stack<int> dfsStack;        // stos do DFS
         dfsStack.push(0);
         dfsStack.push(current_W);
         czerwone.insert(current_W);
+        odwiedzone.insert(current_W);
         
-        while(odwiedzone.size() < liczba_w){
-            int znaleziony_sasiad = 0;
-            if(znaleziony_sasiad = searchFristNotVisitedNeighbor(current_W)){
-                cout<<"Znaleziony sasiad " << znaleziony_sasiad << endl;
+        while(odwiedzone.size() < liczba_w){                // szukamy az wszystkie wierzcholki przerobimy
+            int znaleziony_sasiad;
+            if(znaleziony_sasiad = searchFirstNotVisitedNeighbor(current_W)){
                 dfsStack.push(znaleziony_sasiad);
-                if(czerwone.count(current_W)){
-                    zielone.insert(znaleziony_sasiad);
-                } else{
-                    czerwone.insert(znaleziony_sasiad);
-                }
                 odwiedzone.insert(znaleziony_sasiad);
                 previosW = current_W;
                 current_W = znaleziony_sasiad;
+                oznaczWierzcholki(znaleziony_sasiad, previosW);  //jak zielony to nowy czerwony i odwrotnie
                 
-            }else if(current_W == 0 && odwiedzone.size() < liczba_w){
-                cout<<"koniec"<<endl;
-                break;
+            }else if(current_W == 0 && odwiedzone.size() < liczba_w){  //gdy nie ma sasiadow, a nie odwiedzilismy wszystkich
+                spojny = false;
+                current_W = searchFirstNotVisited();
+                previosW = 0;
+                spojny_counter++;
+                dfsStack.push(current_W);
+                czerwone.insert(current_W);
+                odwiedzone.insert(current_W);
+                
             }
-            else{
-                cout<< current_W <<" nie ma kolejnego nieodwiedzonego sasiada"<<endl;
+            else{  // nie ma kolejnych nieodwiedzonych sasiadow to wracamy
                 dfsStack.pop();
                 current_W = dfsStack.top();
                 dfsStack.pop();
                 previosW = dfsStack.top();
                 dfsStack.push(current_W);
-                cout<<"Powrot do " << current_W << " z poprzednim " << previosW << endl;
-
+            
             }
         }
-        cout<<"KONIEC: znaleziono " << odwiedzone.size() << " z " << liczba_w << endl;
+        checkUsedKrawedzie();   //sprawdzamy, czy kazda krawedz zostala uzyta, jesli nie to cykl
+        checkDwudzielnosc();    //sprawdzamy, czy wszystkie krawedzie lacza wierzchloki innych kolorow
+        cout<<"Dwudzielnosc " << boolToStringPolish(dwudzielny) << endl;
+        cout<<"Spojny " << boolToStringPolish(spojny) << " (" << spojny_counter << ")" << endl;
+        cout<<"Cykle " << boolToStringPolish(cykle) << endl;
+        cout<<"Drzewo " << boolToStringPolish(czyDrzewo())<<endl;
     };
 
     void printGraph(){
         cout<<"Liczba wierzcholkow " << liczba_w << " liczba krawedzi " << liczba_k <<endl;
+        cout<<"Krawedzie: " << endl;
         for(int i = 0; i < krawedzie.size(); i++){
             cout<<krawedzie[i][0]<<" "<<krawedzie[i][1]<<endl;
         }
     };
 
-    int searchFristNotVisitedNeighbor(int current_W){
-        for(int i = 1; i < krawedzie.size(); i++){
+    int searchFirstNotVisitedNeighbor(int current_W){
+        for(int i = 0; i < krawedzie.size(); i++){
             for(int j = 0; j < 2; j++){
-                if(krawedzie[i][j] == current_W && !zielone.count(krawedzie[i][(j+1)%2]) && !czerwone.count(krawedzie[i][(j+1)%2])){
-                    return krawedzie[i][(j+1)%2];
+                if(!usedKrawedzie.count(i)){
+                    if(krawedzie[i][j] == current_W ){
+                        if(!odwiedzone.count(krawedzie[i][(j+1)%2])){
+                            usedKrawedzie.insert(i);
+                            return krawedzie[i][(j+1)%2];
+                        }
+                        else{
+                            cykle = true;
+                        }
+                    }
                 }
             }
         }
         return 0;
     }
 
+    int searchFirstNotVisited(){
+        for(int i = 1; i< liczba_w; i++){
+            if(!odwiedzone.count(i)){
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    void oznaczWierzcholki(int current_W, int previos_W){
+        if(zielone.count(previos_W)){
+            czerwone.insert(current_W);
+        }else{
+            zielone.insert(current_W);
+        }
+    }
+
+    void checkDwudzielnosc(){
+        for(auto krawedz : krawedzie){
+            if(zielone.count(krawedz[0])){
+                if(!czerwone.count(krawedz[1])){
+                    dwudzielny = false;
+                }
+            }else{
+                if(!zielone.count(krawedz[1])){
+                    dwudzielny = false;
+                }
+            }
+        }
+    }
+
+    string boolToStringPolish(bool value){
+        if(value){
+            return "TAK";
+        }
+        else{
+            return "NIE";
+        }
+    }
+
+    bool czyDrzewo(){
+        if(spojny && !cykle){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    void checkUsedKrawedzie(){
+        for(int i = 0; i < krawedzie.size(); i++){
+            if(!usedKrawedzie.count(i)){
+                cykle = true;
+            }
+        }
+    }
 
 };
 
@@ -125,6 +188,10 @@ class Graphs{
     Graphs(string filename){
         this->filename = filename;
         loadGraphsFromFile();
+    };
+
+    Graphs(){
+        cout<<"Program do sprawdzania grafo1w" << endl;
     };
 
     void loadGraphsFromFile(){
@@ -145,7 +212,6 @@ class Graphs{
                     file>>v1>>v2;
                     currentRow.push_back(v1);
                     currentRow.push_back(v2);
-                    cout<<"current row" << v1 <<" " << v2 << endl;
                     currentKrawedzie.push_back(currentRow);
                 }
                 currentGraph.setKrawedzie(currentKrawedzie);
@@ -166,7 +232,7 @@ class Graphs{
         for(int i = 0; i<liczbaGrafow; i++){
             Graph currentGraph;
             int liczba_w, liczba_k;
-            cout<<"Podaj liczbe wierzcholkow i krawedzi"<<endl;
+            cout<<"Podaj liczbe wierzcholkow i krawedzi dla grafu " << i + 1<<endl;
             cin>>liczba_w>>liczba_k;
             currentGraph.setliczba_w(liczba_w);
             currentGraph.setliczba_k(liczba_k);
@@ -206,13 +272,38 @@ class Graphs{
         return this;
     }
 
+    Graphs* checkLoadSourceAndLoad(){
+        int wybor;
+        cout<<"Jak chcesz zaladowac graf" << endl;
+        cout<<"1. z pliku " << endl;
+        cout<<"2. wpisujac w konsole " << endl;
+        cin>>wybor;
+        switch(wybor){
+            case 1:{
+                cout<<"Podaj nazwe pliku"<< endl;
+                cin >> filename;
+                loadGraphsFromFile();
+                break;
+            }
+            case 2:{
+                loadFromConsole();
+                break;
+            }
+            default: {
+                cout<<"Niepoprawny wybor "<< endl;
+                exit(1);
+            }
+  
+        }
+        return this;
+
+    }
 };
 
 
 int main(){
-    Graphs* grafy = new Graphs("dane.txt");
-    grafy->printGraphs()->checkGraphs();
-   
+    Graphs* grafy = new Graphs();
+    grafy->checkLoadSourceAndLoad()->printGraphs()->checkGraphs();;
     
     return 0;
 }
