@@ -9,16 +9,15 @@
 using namespace std;
 
 
-class Graph{            // klasa, do przechowywania informacji o grafie, krawedzie w wektorze wektorow(wewnetrzny wektor zawiera dwie liczby int)
-    int liczba_w;
-    int liczba_k;
-    vector<vector<int>> macierz_sasiadow;
-    stack<int> odwiedzone;
-    vector<int> colors;
-    vector<set<int>> odwiedzoneZVertex;
-    bool comeback = false;
+class Graph{            // klasa, do przechowywania informacji o grafie, 
+    int liczba_w;       //liczba wierzcholkow
+    int liczba_k;       // liczba kolorow
+    vector<vector<int>> macierz_sasiadow;       //macierz sasiedztwa
+    stack<int> odwiedzone;              // stos do przegladania wierzcholkow i cofania
+    vector<int> colors;         //aktualne kolorowanie
+    vector<set<int>> odwiedzoneZVertex;     // zablokowane z danego wierzcholka bo juz pokolorane i odwieodzone
     bool end = false;
-    bool paintedAll = false;
+    bool paintedAll = false;        // flaga czy pokolorowano wszystkie
 
 
     public:
@@ -48,42 +47,36 @@ class Graph{            // klasa, do przechowywania informacji o grafie, krawedz
         odwiedzoneZVertex.resize(liczba_w);
         odwiedzone.push(current_W);
         colors[current_W] = 1;
-        cout<<"aktualna licza "<<current_W<<endl;
-        cout<<odwiedzoneZVertex.size()<< endl;
-        set<int> alreadyVisitedFromCurrent;
         while(!end){ 
-            cout<<"petla in" << endl; 
-            int newNeighbor = findNeighbor(current_W);
+            int newNeighbor = findNeighborNotPaintedNotAlreadyVisited(current_W);
             bool foundNext = newNeighbor != current_W;
-            if(foundNext){ 
-            odwiedzone.push(newNeighbor);
-            odwiedzoneZVertex[current_W].insert(newNeighbor);
-            current_W = newNeighbor;
-           
+            if(foundNext){          // jesli znalazlo nastepny to dodaj do stosu odwiedzonych, oznacz jako odwiedzony i ustaw jako aktualny
+                odwiedzone.push(newNeighbor);
+                odwiedzoneZVertex[current_W].insert(newNeighbor);
+                current_W = newNeighbor;
             }
-            
-            if(!foundNext || !paintVertex(current_W)){
-                cout<<"cofamy" << endl;
-                
-                current_W = odwiedzone.top();
+            if(!foundNext || !paintVertexIfPossible(current_W)){ // jesli nie ma nastepnego lub malowanie aktualnego niemozliwe to cofaj
+                int oldCurrent = current_W;
+                odwiedzoneZVertex[current_W].clear();
                 odwiedzone.pop();
-                
-                // cofamy
+                current_W = odwiedzone.top();
+                odwiedzoneZVertex[current_W].insert(oldCurrent);
+                colors[oldCurrent] = 0;             //wyczysc kolorowanie
             }
-            cout<<"size stosu "<< odwiedzone.size() << endl;
-            if(odwiedzone.size() == 1){
+            if(odwiedzone.size() == 1){         // jesli wrocilismy do poczatku to konczymy bez skutku
                 end = true;
             }
-            if(odwiedzone.size() == liczba_w){
-                paintedAll = true;
+            if(odwiedzone.size() == liczba_w){          //jesli dostarlismy do ostatniego to konczymy i wyswietlamy malowanie
+                paintedAll = true;  
                 end = true;
             }
         }
-        cout<<"Pokolorowano " << paintedAll<< endl;
         if(paintedAll){
-            printResults(colors);
+            printPaintingResults(colors);
         }
-        cout<<"end!"<<endl;
+        else{
+            cout<<"NIE"<<endl;
+        }
     }
 
     void printGraph(){
@@ -98,7 +91,7 @@ class Graph{            // klasa, do przechowywania informacji o grafie, krawedz
     };
 
 
-    bool paintVertex(int current_W){
+    bool paintVertexIfPossible(int current_W){
         vector<int> freeColors(liczba_k + 1,0);
         freeColors[0] = 1;
         for(int neighbor : findNeighbors(current_W)){
@@ -112,46 +105,40 @@ class Graph{            // klasa, do przechowywania informacji o grafie, krawedz
                 return true;
             }
         }
-        cout<<" Nie znaleziono kolorsu" << endl;
         return false;
     }
 
-    void printResults(vector<int> currentColors){
+    void printPaintingResults(vector<int> currentColors){
         for(int i = 0; i < currentColors.size(); i++){
             cout<<currentColors[i]<<" ";
         }
         cout<<endl;
     }
 
-   int findNeighbor(int current_W){
+   int findNeighborNotPaintedNotAlreadyVisited(int current_W){  // znajdz sasiada aktualnego wierzcholka, ktory nie jest pokolorowany i nie byl juz odwiedzany
         for(int i = 0; i < liczba_w; i++){
-            cout<<"szukamy" << current_W <<  endl;
+
             if(macierz_sasiadow[current_W][i] == 1 && colors[i] == 0 && !odwiedzoneZVertex[current_W].count(i)){
-               cout<<"znaleziony sasiad " << current_W << " to: " << i << " odwiedzone: " << odwiedzoneZVertex[current_W].count(i)<< endl;
                return i;
             }
         }
         return current_W;
    }
+    
 
-   set<int> findNeighbors(int current_W){
+   set<int> findNeighbors(int current_W){       //znajdz jakiegokolwiek sasiada aktualnego wierzcholka
        set<int> currentNeighbors;
        for(int i = 0; i< liczba_w; i++){
             if(macierz_sasiadow[current_W][i] == 1){
                currentNeighbors.insert(i);
-               cout<<"znaleziony sasiad " << current_W << " to " << i << endl;
+
             }
         }
         return currentNeighbors;
    }
 
     string boolToStringPolish(bool value){
-        if(value){
-            return "TAK";
-        }
-        else{
-            return "NIE";
-        }
+        return value ? "TAK" : "NIE";
     }
 
 
@@ -164,7 +151,7 @@ class Graphs{
 
     public:
     Graphs(){
-        cout<<"Program do sprawdzania grafo1w" << endl;
+        cout<<"Program do kolorowania grafow" << endl;
         loadFromConsole();
     };
 
@@ -175,7 +162,6 @@ class Graphs{
         for(int i = 0; i<liczbaGrafow; i++){
             Graph currentGraph;
             int liczba_w, liczba_k;
-           // cout<<"Podaj liczbe wierzcholkow i krawedzi dla grafu " << i + 1<<endl;
             cin>>liczba_w>>liczba_k;
             currentGraph.setliczba_w(liczba_w);
             currentGraph.setliczba_k(liczba_k);
@@ -198,19 +184,17 @@ class Graphs{
 
     Graphs* printGraphs(){
 
-        for(int i = 1; i< liczbaGrafow; i++){
+        for(int i = 0; i< liczbaGrafow; i++){
             cout<<"Graf numer " << i+1 << endl;
             grafy[i].printGraph();
-            cout<<endl;
         }
         return this;
     }
 
     Graphs* checkGraphs(int starting_W){
-        for(int i = 1; i< liczbaGrafow; i++){
+        for(int i = 0; i< liczbaGrafow; i++){
             cout<<"Graf numer " << i+1 << endl;
             grafy[i].checkGraph(starting_W);
-            cout<<endl;
         }
         return this;
     }
@@ -221,7 +205,7 @@ class Graphs{
 int main(){
 
     Graphs* grafy = new Graphs();
-    grafy->printGraphs()->checkGraphs(0);
+    grafy->checkGraphs(0);
     
     return 0;
 }
