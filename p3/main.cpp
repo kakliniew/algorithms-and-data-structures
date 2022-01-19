@@ -4,6 +4,7 @@
 #include <string>
 #include <set>
 #include <stack>
+#include <queue>
 
 using namespace std;
 
@@ -11,7 +12,7 @@ using namespace std;
 class Graph{            // klasa, do przechowywania informacji o grafie, 
     int liczba_w;       //liczba wierzcholkow
     int liczba_k;       // liczba kolorow
-    vector<vector<int>> macierz_sasiadow;       //macierz sasiedztwa
+    priority_queue<pair<int,pair<int,int>>> krawedzie;       //macierz sasiedztwa
     stack<int> odwiedzone;              // stos do przegladania wierzcholkow i cofania
     vector<int> colors;         //aktualne kolorowanie
     bool end = false;

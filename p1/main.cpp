@@ -226,7 +226,7 @@ class Graphs{
     
     }
 
-    void loadFromConsole(){
+    Graphs* loadFromConsole(){
         cout<<"Podaj liczbe grafow " << endl;
         cin>>liczbaGrafow;
         for(int i = 0; i<liczbaGrafow; i++){
@@ -251,6 +251,7 @@ class Graphs{
             currentGraph.setKrawedzie(currentKrawedzie);
             grafy.push_back(currentGraph);
         }
+        return this;
     }
 
     Graphs* printGraphs(){
@@ -302,8 +303,9 @@ class Graphs{
 
 
 int main(){
+
     Graphs* grafy = new Graphs();
-    grafy->checkLoadSourceAndLoad()->printGraphs()->checkGraphs();;
+    grafy->loadFromConsole()->printGraphs()->checkGraphs();
     
     return 0;
 }
